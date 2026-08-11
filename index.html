@@ -173,6 +173,21 @@
   }
   ::-webkit-scrollbar{width:8px; height:8px;}
   ::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px;}
+
+  .city-results{
+    position:absolute; left:0; right:0; top:100%; z-index:30; margin-top:4px;
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    box-shadow:0 12px 34px rgba(23,35,63,.14); max-height:260px; overflow-y:auto;
+  }
+  .city-results .ci{
+    padding:9px 12px; cursor:pointer; font-size:13px; color:var(--text);
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .city-results .ci:last-child{border-bottom:none;}
+  .city-results .ci:hover{background:var(--panel-2);}
+  .city-results .ci .sub{color:var(--text-dim); font-size:11.5px; font-weight:400;}
+  .city-results .empty-ci{padding:11px 12px; font-size:12.5px; color:var(--text-dim);}
 </style>
 </head>
 <body>
@@ -216,6 +231,16 @@
           <div class="field"><label>Data de nascimento</label><input id="fDate" type="date"></div>
           <div class="field"><label>Hora de nascimento (local)</label><input id="fTime" type="time" step="60" value="12:00"></div>
           <div class="field"><label>Fuso horário (UTC offset, ex: -3 ou -4)</label><input id="fTz" type="number" step="0.5" value="-3"></div>
+        </div>
+
+        <div class="field full" style="margin-top:14px; position:relative;">
+          <label>Buscar cidade (preenche latitude, longitude e fuso automaticamente)</label>
+          <div style="display:flex; gap:8px;">
+            <input id="fCitySearch" placeholder="Ex.: Belo Horizonte, MG" autocomplete="off" style="flex:1;">
+            <button class="btn btn-ghost" id="btnCitySearch" type="button" style="padding:9px 18px;">Buscar</button>
+          </div>
+          <div id="cityResults" class="city-results" style="display:none;"></div>
+          <div class="hint" id="tzHint" style="margin-top:6px;"></div>
         </div>
 
         <div class="field full" style="margin-top:14px;">
@@ -730,36 +755,42 @@ function renderDial(bodies, orbCosmo, size){
 async function saveClient(data){
   const id = data.id || ('c_'+Date.now());
   data.id = id;
-  await window.storage.set('client:'+id, JSON.stringify(data), false);
-  let idx = [];
-  try{ const r = await window.storage.get('clients-index', false); idx = JSON.parse(r.value); }catch(e){ idx=[]; }
-  if(!idx.includes(id)) idx.push(id);
-  await window.storage.set('clients-index', JSON.stringify(idx), false);
+  try{
+    localStorage.setItem('client:'+id, JSON.stringify(data));
+    let idx = [];
+    try{ idx = JSON.parse(localStorage.getItem('clients-index')) || []; }catch(e){ idx=[]; }
+    if(!idx.includes(id)) idx.push(id);
+    localStorage.setItem('clients-index', JSON.stringify(idx));
+  }catch(e){
+    alert('Não foi possível salvar: o armazenamento do navegador está indisponível (verifique se está em modo anônimo ou com cookies bloqueados).');
+    throw e;
+  }
   return id;
 }
 async function loadClientIndex(){
-  try{ const r = await window.storage.get('clients-index', false); return JSON.parse(r.value); }catch(e){ return []; }
+  try{ return JSON.parse(localStorage.getItem('clients-index')) || []; }catch(e){ return []; }
 }
 async function loadClient(id){
-  try{ const r = await window.storage.get('client:'+id, false); return JSON.parse(r.value); }catch(e){ return null; }
+  try{ return JSON.parse(localStorage.getItem('client:'+id)); }catch(e){ return null; }
 }
 async function deleteClient(id){
-  try{ await window.storage.delete('client:'+id, false); }catch(e){}
+  try{ localStorage.removeItem('client:'+id); }catch(e){}
   let idx = await loadClientIndex();
   idx = idx.filter(x=>x!==id);
-  await window.storage.set('clients-index', JSON.stringify(idx), false);
+  try{ localStorage.setItem('clients-index', JSON.stringify(idx)); }catch(e){}
 }
 
 /* ============================================================
    UI
    ============================================================ */
+let selectedIana = null;
 const PRESETS = [
-  {label:'Orlando, FL', lat:28.5383, lon:-81.3792, tz:-4, place:'Orlando, FL, EUA'},
-  {label:'Miami, FL', lat:25.7617, lon:-80.1918, tz:-4, place:'Miami, FL, EUA'},
-  {label:'Ocoee, FL', lat:28.5694, lon:-81.5392, tz:-4, place:'Ocoee, FL, EUA'},
-  {label:'São Paulo, SP', lat:-23.5505, lon:-46.6333, tz:-3, place:'São Paulo, SP, Brasil'},
-  {label:'Guarujá, SP', lat:-23.9931, lon:-46.2564, tz:-3, place:'Guarujá, SP, Brasil'},
-  {label:'Rio de Janeiro, RJ', lat:-22.9068, lon:-43.1729, tz:-3, place:'Rio de Janeiro, RJ, Brasil'},
+  {label:'Orlando, FL', lat:28.5383, lon:-81.3792, tz:-4, place:'Orlando, FL, EUA', iana:'America/New_York'},
+  {label:'Miami, FL', lat:25.7617, lon:-80.1918, tz:-4, place:'Miami, FL, EUA', iana:'America/New_York'},
+  {label:'Ocoee, FL', lat:28.5694, lon:-81.5392, tz:-4, place:'Ocoee, FL, EUA', iana:'America/New_York'},
+  {label:'São Paulo, SP', lat:-23.5505, lon:-46.6333, tz:-3, place:'São Paulo, SP, Brasil', iana:'America/Sao_Paulo'},
+  {label:'Guarujá, SP', lat:-23.9931, lon:-46.2564, tz:-3, place:'Guarujá, SP, Brasil', iana:'America/Sao_Paulo'},
+  {label:'Rio de Janeiro, RJ', lat:-22.9068, lon:-43.1729, tz:-3, place:'Rio de Janeiro, RJ, Brasil', iana:'America/Sao_Paulo'},
 ];
 const presetRow = document.getElementById('presetRow');
 PRESETS.forEach(p=>{
@@ -770,9 +801,110 @@ PRESETS.forEach(p=>{
     document.getElementById('fLon').value=p.lon;
     document.getElementById('fTz').value=p.tz;
     document.getElementById('fPlace').value=p.place;
+    const cs=document.getElementById('fCitySearch'); if(cs) cs.value=p.place;
+    selectedIana = p.iana || null;
+    recomputeTz();
   };
   presetRow.appendChild(b);
 });
+
+/* ============================================================
+   Busca de cidade (geocodificação) + fuso automático com horário de verão
+   ============================================================ */
+function tzOffsetForInstant(iana, date){
+  const dtf = new Intl.DateTimeFormat('en-US',{timeZone:iana,hour12:false,
+    year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const p={}; dtf.formatToParts(date).forEach(x=>{ if(x.type!=='literal') p[x.type]=x.value; });
+  let hh = p.hour==='24' ? '00' : p.hour;
+  const asUTC = Date.UTC(+p.year, +p.month-1, +p.day, +hh, +p.minute, +p.second);
+  return (asUTC - date.getTime())/3600000;
+}
+function tzOffsetForWallClock(iana, y,m,d,hh,mm){
+  const guess = Date.UTC(y, m-1, d, hh, mm);
+  const o1 = tzOffsetForInstant(iana, new Date(guess));
+  const o2 = tzOffsetForInstant(iana, new Date(guess - o1*3600000));
+  return o2;
+}
+function fmtOffset(o){
+  const s = o<0 ? '-' : '+'; const a = Math.abs(o);
+  const h = Math.floor(a); const mm = Math.round((a-h)*60);
+  return 'UTC'+s+h+(mm ? (':'+String(mm).padStart(2,'0')) : '');
+}
+function recomputeTz(){
+  const hint = document.getElementById('tzHint');
+  if(!selectedIana){ if(hint) hint.textContent=''; return; }
+  const dv = document.getElementById('fDate').value;
+  if(!dv){ if(hint) hint.textContent='Escolha a data de nascimento para o fuso ser calculado automaticamente (com horário de verão).'; return; }
+  const [y,m,d] = dv.split('-').map(Number);
+  const tv = document.getElementById('fTime').value || '12:00';
+  const [hh,mm] = tv.split(':').map(Number);
+  let off;
+  try{ off = tzOffsetForWallClock(selectedIana, y,m,d,hh,mm); }
+  catch(e){ if(hint) hint.textContent='Não foi possível calcular o fuso para esta cidade.'; return; }
+  const fTz = document.getElementById('fTz');
+  fTz.value = (Math.round(off*2)/2);
+  let dst=false;
+  try{
+    const janOff = tzOffsetForInstant(selectedIana, new Date(Date.UTC(y,0,15,12)));
+    const julOff = tzOffsetForInstant(selectedIana, new Date(Date.UTC(y,6,15,12)));
+    const dstOff = Math.max(janOff, julOff), stdOff = Math.min(janOff, julOff);
+    dst = (dstOff!==stdOff) && (Math.abs(off-dstOff) < 1e-6);
+  }catch(e){}
+  if(hint) hint.textContent = 'Fuso detectado: '+fmtOffset(off)+(dst?' · horário de verão ativo nesta data':'')+' · '+selectedIana;
+}
+async function geocodeCity(q){
+  const url = 'https://geocoding-api.open-meteo.com/v1/search?count=6&language=pt&format=json&name='+encodeURIComponent(q);
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('geo');
+  const j = await r.json();
+  return j.results || [];
+}
+(function(){
+  const citySearch = document.getElementById('fCitySearch');
+  const cityBtn = document.getElementById('btnCitySearch');
+  const cityResults = document.getElementById('cityResults');
+  if(!citySearch) return;
+  async function doCitySearch(){
+    const q = citySearch.value.trim();
+    if(!q){ cityResults.style.display='none'; return; }
+    cityResults.style.display='block';
+    cityResults.innerHTML='<div class="empty-ci">Buscando…</div>';
+    let res;
+    try{ res = await geocodeCity(q); }
+    catch(e){ cityResults.innerHTML='<div class="empty-ci">Sem conexão para buscar agora. Você pode preencher latitude/longitude manualmente.</div>'; return; }
+    if(!res.length){ cityResults.innerHTML='<div class="empty-ci">Nenhuma cidade encontrada. Tente incluir o estado ou país (ex.: "Curitiba, PR").</div>'; return; }
+    cityResults.innerHTML='';
+    res.forEach(c=>{
+      const div = document.createElement('div'); div.className='ci';
+      const sub = [c.admin1, c.country].filter(Boolean).join(', ');
+      div.innerHTML = '<span>'+c.name+(sub?' <span class="sub">— '+sub+'</span>':'')+'</span>'+
+                      '<span class="sub">'+c.latitude.toFixed(2)+', '+c.longitude.toFixed(2)+'</span>';
+      div.onclick = ()=>selectCity(c);
+      cityResults.appendChild(div);
+    });
+  }
+  function selectCity(c){
+    document.getElementById('fLat').value = c.latitude.toFixed(4);
+    document.getElementById('fLon').value = c.longitude.toFixed(4);
+    const place = [c.name, c.admin1, c.country].filter(Boolean).join(', ');
+    document.getElementById('fPlace').value = place;
+    citySearch.value = place;
+    selectedIana = c.timezone || null;
+    cityResults.style.display='none';
+    recomputeTz();
+  }
+  cityBtn.onclick = doCitySearch;
+  citySearch.addEventListener('keydown', function(e){
+    if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); doCitySearch(); }
+  });
+  document.addEventListener('click', function(e){
+    if(!cityResults.contains(e.target) && e.target!==citySearch && e.target!==cityBtn){
+      cityResults.style.display='none';
+    }
+  });
+  const fd = document.getElementById('fDate'); if(fd) fd.addEventListener('change', recomputeTz);
+  const ft = document.getElementById('fTime'); if(ft) ft.addEventListener('change', recomputeTz);
+})();
 
 document.querySelectorAll('.nav-btn').forEach(b=>{
   b.onclick=()=>{
