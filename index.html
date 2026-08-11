@@ -8,18 +8,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0A0E1A;
-    --panel:#121729;
-    --panel-2:#171D33;
-    --border:#262E4A;
-    --border-soft:#1C2338;
-    --gold:#C9A46B;
-    --gold-bright:#E4C68C;
-    --teal:#6FA3AE;
-    --rust:#BE7C6C;
-    --text:#E8E4D8;
-    --text-muted:#8791A8;
-    --text-dim:#535C77;
+    --bg:#F6F9FE;
+    --panel:#FFFFFF;
+    --panel-2:#EEF3FB;
+    --border:#CBD7E8;
+    --border-soft:#E3EAF4;
+    --gold:#2563EB;
+    --gold-bright:#1D4ED8;
+    --teal:#0891B2;
+    --rust:#DC2626;
+    --text:#17233F;
+    --text-muted:#586A86;
+    --text-dim:#6B7A93;
     --radius:10px;
   }
   *{box-sizing:border-box;}
@@ -27,21 +27,21 @@
   body{
     margin:0;
     background:
-      radial-gradient(ellipse 1200px 700px at 20% -10%, #16203a 0%, transparent 60%),
-      radial-gradient(ellipse 900px 600px at 100% 10%, #14182b 0%, transparent 55%),
+      radial-gradient(ellipse 1200px 700px at 20% -10%, #E4EDFB 0%, transparent 60%),
+      radial-gradient(ellipse 900px 600px at 100% 10%, #EAF1FC 0%, transparent 55%),
       var(--bg);
     color:var(--text);
     font-family:'Inter', sans-serif;
     -webkit-font-smoothing:antialiased;
   }
-  .stars{position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;}
+  .stars{position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.35;}
   .app{position:relative; z-index:1; display:flex; min-height:100vh;}
 
   /* ---------- Sidebar ---------- */
   .sidebar{
     width:260px; flex:0 0 260px; border-right:1px solid var(--border-soft);
     padding:28px 20px; display:flex; flex-direction:column; gap:22px;
-    background:linear-gradient(180deg, rgba(18,23,41,.4), rgba(18,23,41,.15));
+    background:linear-gradient(180deg, #EFF4FC, #F8FAFE);
   }
   .brand{display:flex; flex-direction:column; gap:2px;}
   .brand-mark{
@@ -81,6 +81,7 @@
     background:linear-gradient(180deg, var(--panel), var(--panel-2));
     border:1px solid var(--border-soft); border-radius:var(--radius);
     padding:24px; margin-bottom:20px;
+    box-shadow:0 1px 2px rgba(23,35,63,.05), 0 10px 30px rgba(23,35,63,.05);
   }
   .card h3{
     font-family:'Spectral', serif; font-weight:500; font-size:16px; color:var(--gold-bright);
@@ -93,17 +94,17 @@
   .field.full{grid-column:1/-1;}
   .field label{font-size:11.5px; color:var(--text-muted); letter-spacing:.3px;}
   .field input, .field select{
-    background:#0D1220; border:1px solid var(--border); border-radius:7px; color:var(--text);
+    background:#FFFFFF; border:1px solid var(--border); border-radius:7px; color:var(--text);
     padding:9px 11px; font-size:13.5px; font-family:'Inter', sans-serif; outline:none; transition:.15s;
   }
-  .field input:focus, .field select:focus{border-color:var(--gold); box-shadow:0 0 0 3px rgba(201,164,107,.12);}
+  .field input:focus, .field select:focus{border-color:var(--gold); box-shadow:0 0 0 3px rgba(37,99,235,.15);}
   .field .hint{font-size:10.5px; color:var(--text-dim);}
 
   .btn{
     all:unset; cursor:pointer; padding:11px 20px; border-radius:8px; font-size:13.5px; font-weight:600;
     display:inline-flex; align-items:center; gap:8px; transition:.15s;
   }
-  .btn-primary{background:linear-gradient(180deg, var(--gold-bright), var(--gold)); color:#20160A;}
+  .btn-primary{background:linear-gradient(180deg, var(--gold), var(--gold-bright)); color:#FFFFFF;}
   .btn-primary:hover{filter:brightness(1.08);}
   .btn-ghost{background:var(--panel-2); color:var(--text-muted); border:1px solid var(--border);}
   .btn-ghost:hover{color:var(--text); border-color:var(--gold);}
@@ -135,7 +136,7 @@
 
   .chart-layout{display:grid; grid-template-columns:auto 1fr; gap:30px; align-items:start;}
   @media (max-width:900px){ .chart-layout{grid-template-columns:1fr;} }
-  .wheel-wrap{background:#0B0F1D; border:1px solid var(--border-soft); border-radius:12px; padding:16px;}
+  .wheel-wrap{background:#FFFFFF; border:1px solid var(--border-soft); border-radius:12px; padding:16px;}
 
   table{width:100%; border-collapse:collapse; font-size:12.5px;}
   th{text-align:left; font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.6px; padding:6px 8px; border-bottom:1px solid var(--border-soft);}
@@ -144,15 +145,15 @@
   .retro{color:var(--rust); font-size:10px; margin-left:4px;}
 
   .aspect-tag{display:inline-block; padding:2px 7px; border-radius:20px; font-size:10.5px; font-family:'IBM Plex Mono',monospace;}
-  .asp-conj{background:rgba(201,164,107,.15); color:var(--gold-bright);}
-  .asp-opp{background:rgba(190,124,108,.18); color:var(--rust);}
-  .asp-sq{background:rgba(190,124,108,.12); color:#D89485;}
-  .asp-tri{background:rgba(111,163,174,.16); color:var(--teal);}
-  .asp-sext{background:rgba(111,163,174,.1); color:#8FC0C9;}
+  .asp-conj{background:rgba(37,99,235,.12); color:var(--gold-bright);}
+  .asp-opp{background:rgba(220,38,38,.12); color:var(--rust);}
+  .asp-sq{background:rgba(239,68,68,.10); color:#EF4444;}
+  .asp-tri{background:rgba(8,145,178,.14); color:var(--teal);}
+  .asp-sext{background:rgba(8,145,178,.09); color:#0E7490;}
 
   .pic-list{display:flex; flex-direction:column; gap:8px; margin-top:4px;}
   .pic{
-    background:#0D1220; border:1px solid var(--border-soft); border-radius:8px; padding:10px 13px;
+    background:#FFFFFF; border:1px solid var(--border-soft); border-radius:8px; padding:10px 13px;
     font-family:'IBM Plex Mono', monospace; font-size:12.5px; color:var(--text); display:flex; justify-content:space-between; gap:10px; align-items:center;
   }
   .pic .orb{color:var(--text-dim); font-size:11px; flex:0 0 auto;}
@@ -167,7 +168,7 @@
   .badge{font-size:10px; padding:2px 8px; border-radius:20px; background:var(--panel-2); border:1px solid var(--border); color:var(--text-muted);}
 
   textarea{
-    background:#0D1220; border:1px solid var(--border); border-radius:7px; color:var(--text);
+    background:#FFFFFF; border:1px solid var(--border); border-radius:7px; color:var(--text);
     padding:9px 11px; font-size:12.5px; font-family:'Inter', sans-serif; outline:none; resize:vertical; min-height:70px; width:100%;
   }
   ::-webkit-scrollbar{width:8px; height:8px;}
@@ -181,7 +182,7 @@
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#E4C68C" stroke-width="1.3"/><circle cx="12" cy="12" r="1.6" fill="#E4C68C"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2" stroke="#E4C68C" stroke-width="1.1"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#1D4ED8" stroke-width="1.3"/><circle cx="12" cy="12" r="1.6" fill="#1D4ED8"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2" stroke="#1D4ED8" stroke-width="1.1"/></svg>
         Lia Ross
       </div>
       <div class="brand-sub">Mapa astral & cosmobiologia</div>
@@ -497,7 +498,7 @@ const SIGNS = [
   {name:'Sagitário', glyph:'♐', elem:'fire'}, {name:'Capricórnio', glyph:'♑', elem:'earth'},
   {name:'Aquário', glyph:'♒', elem:'air'}, {name:'Peixes', glyph:'♓', elem:'water'}
 ];
-const ELEM_COLOR = {fire:'#BE7C6C', earth:'#8C9B6E', air:'#8FAFC4', water:'#7C8FBE'};
+const ELEM_COLOR = {fire:'#DC2626', earth:'#4D7C0F', air:'#2F73B0', water:'#3B4F9E'};
 function signOf(lon){ return SIGNS[Math.floor(norm360(lon)/30)]; }
 function degInSign(lon){ return norm360(lon)%30; }
 function fmtDeg(lon){
@@ -631,31 +632,31 @@ function renderWheel(chart, cusps, size){
   const pt = (r,lon) => { const a=angleFor(lon); return [cx + r*Math.cos(a), cy - r*Math.sin(a)]; };
 
   let svg = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
-  svg += `<circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="none" stroke="#262E4A" stroke-width="1"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="none" stroke="#B7C5DB" stroke-width="1"/>`;
 
   // zodiac ring segments
   for(let s=0;s<12;s++){
     const lonStart = s*30;
     const a0 = angleFor(lonStart), a1 = angleFor(lonStart+30);
     const [x0,y0] = pt(rOuter, lonStart), [x1,y1] = pt(rZodiac, lonStart);
-    svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="#20263E" stroke-width="1"/>`;
+    svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="#DBE3EF" stroke-width="1"/>`;
     const midLon = lonStart+15;
     const [gx,gy] = pt((rOuter+rZodiac)/2, midLon);
     svg += `<text x="${gx}" y="${gy}" fill="${ELEM_COLOR[SIGNS[s].elem]}" font-size="${size*0.032}" text-anchor="middle" dominant-baseline="central">${SIGNS[s].glyph}</text>`;
   }
-  svg += `<circle cx="${cx}" cy="${cy}" r="${rZodiac}" fill="none" stroke="#262E4A" stroke-width="1"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${rZodiac}" fill="none" stroke="#B7C5DB" stroke-width="1"/>`;
 
   // house cusps
   for(let h=1;h<=12;h++){
     const lon = cusps[h];
     const [x0,y0] = pt(rZodiac, lon), [x1,y1] = pt(rInner, lon);
     const major = (h===1||h===4||h===7||h===10);
-    svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${major?'#C9A46B':'#333B58'}" stroke-width="${major?1.4:0.7}"/>`;
+    svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${major?'#2563EB':'#D3DEEC'}" stroke-width="${major?1.4:0.7}"/>`;
     const midLon = norm360(lon + norm360(cusps[h===12?1:h+1]-lon)/2);
     const [nx,ny] = pt(rHouse-8, midLon);
-    svg += `<text x="${nx}" y="${ny}" fill="#535C77" font-size="${size*0.021}" text-anchor="middle" dominant-baseline="central">${h}</text>`;
+    svg += `<text x="${nx}" y="${ny}" fill="#6B7A93" font-size="${size*0.021}" text-anchor="middle" dominant-baseline="central">${h}</text>`;
   }
-  svg += `<circle cx="${cx}" cy="${cy}" r="${rInner}" fill="none" stroke="#20263E" stroke-width="1"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${rInner}" fill="none" stroke="#DBE3EF" stroke-width="1"/>`;
 
   // aspect lines (behind planets)
   const orb = parseFloat(document.getElementById('fOrb').value)||6;
@@ -664,7 +665,7 @@ function renderWheel(chart, cusps, size){
     if(asp.a==='Ascendente'||asp.b==='Ascendente') return;
     const [x0,y0] = pt(rInner, chart.bodies[asp.a].lon);
     const [x1,y1] = pt(rInner, chart.bodies[asp.b].lon);
-    const colors = {'asp-conj':'#C9A46B','asp-opp':'#BE7C6C','asp-sq':'#D89485','asp-tri':'#6FA3AE','asp-sext':'#8FC0C9'};
+    const colors = {'asp-conj':'#2563EB','asp-opp':'#DC2626','asp-sq':'#EF4444','asp-tri':'#0891B2','asp-sext':'#0E7490'};
     const dash = asp.aspect.name==='Oposição' ? '4,3' : (asp.aspect.name==='Quadratura' ? '2,2' : '0');
     svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${colors[asp.aspect.cls]}" stroke-width="0.9" opacity="0.55" stroke-dasharray="${dash}"/>`;
   });
@@ -682,10 +683,10 @@ function renderWheel(chart, cusps, size){
     placed.push({lon});
     const [x,y] = pt(r, lon);
     const isAngle = name==='Ascendente';
-    svg += `<circle cx="${x}" cy="${y}" r="${size*0.024}" fill="#0D1220" stroke="${isAngle?'#8FC0C9':'#C9A46B'}" stroke-width="1"/>`;
-    svg += `<text x="${x}" y="${y}" fill="${isAngle?'#8FC0C9':'#E4C68C'}" font-size="${size*0.026}" text-anchor="middle" dominant-baseline="central">${PLANET_GLYPH[name]}</text>`;
+    svg += `<circle cx="${x}" cy="${y}" r="${size*0.024}" fill="#FFFFFF" stroke="${isAngle?'#0E7490':'#2563EB'}" stroke-width="1"/>`;
+    svg += `<text x="${x}" y="${y}" fill="${isAngle?'#0E7490':'#1D4ED8'}" font-size="${size*0.026}" text-anchor="middle" dominant-baseline="central">${PLANET_GLYPH[name]}</text>`;
     if(chart.bodies[name].retro){
-      svg += `<text x="${x+size*0.02}" y="${y-size*0.02}" fill="#BE7C6C" font-size="${size*0.016}">℞</text>`;
+      svg += `<text x="${x+size*0.02}" y="${y-size*0.02}" fill="#DC2626" font-size="${size*0.016}">℞</text>`;
     }
   });
 
@@ -699,16 +700,16 @@ function renderDial(bodies, orbCosmo, size){
   const pt=(rad,lon)=>{ const a=angleFor(lon); return [cx+rad*Math.cos(a), cy - rad*Math.sin(a)]; };
 
   let svg = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
-  svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#262E4A" stroke-width="1"/>`;
-  svg += `<circle cx="${cx}" cy="${cy}" r="${r*0.72}" fill="none" stroke="#20263E" stroke-width="1"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#B7C5DB" stroke-width="1"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${r*0.72}" fill="none" stroke="#DBE3EF" stroke-width="1"/>`;
   // ticks every 5 degrees on the 90 scale
   for(let d=0; d<90; d+=5){
     const [x0,y0]=pt(r, d), [x1,y1]=pt(r*0.94, d);
     const major = d%30===0;
-    svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${major?'#C9A46B':'#333B58'}" stroke-width="${major?1.3:0.6}"/>`;
+    svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${major?'#2563EB':'#D3DEEC'}" stroke-width="${major?1.3:0.6}"/>`;
     if(major){
       const [lx,ly]=pt(r*1.09,d);
-      svg += `<text x="${lx}" y="${ly}" fill="#8791A8" font-size="${size*0.026}" text-anchor="middle" dominant-baseline="central">${d}°</text>`;
+      svg += `<text x="${lx}" y="${ly}" fill="#586A86" font-size="${size*0.026}" text-anchor="middle" dominant-baseline="central">${d}°</text>`;
     }
   }
   Object.keys(bodies).forEach(name=>{
@@ -716,8 +717,8 @@ function renderDial(bodies, orbCosmo, size){
     const lon = bodies[name].lon;
     const [x,y] = pt(r*0.72, lon);
     const isAngle = name==='Ascendente';
-    svg += `<circle cx="${x}" cy="${y}" r="${size*0.02}" fill="#0D1220" stroke="${isAngle?'#8FC0C9':'#C9A46B'}" stroke-width="1"/>`;
-    svg += `<text x="${x}" y="${y}" fill="${isAngle?'#8FC0C9':'#E4C68C'}" font-size="${size*0.024}" text-anchor="middle" dominant-baseline="central">${PLANET_GLYPH[name]}</text>`;
+    svg += `<circle cx="${x}" cy="${y}" r="${size*0.02}" fill="#FFFFFF" stroke="${isAngle?'#0E7490':'#2563EB'}" stroke-width="1"/>`;
+    svg += `<text x="${x}" y="${y}" fill="${isAngle?'#0E7490':'#1D4ED8'}" font-size="${size*0.024}" text-anchor="middle" dominant-baseline="central">${PLANET_GLYPH[name]}</text>`;
   });
   svg += `</svg>`;
   return svg;
@@ -1101,7 +1102,7 @@ async function renderClientesFull(){
   const wrap = document.getElementById('clientesFull');
   if(idx.length===0){
     wrap.innerHTML = `<div class="card empty">
-      <svg width="46" height="46" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#8791A8" stroke-width="1.2"/></svg>
+      <svg width="46" height="46" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#586A86" stroke-width="1.2"/></svg>
       <div>Nenhum cliente salvo ainda. Calcule um mapa e clique em "Salvar cliente".</div>
     </div>`;
     return;
@@ -1139,7 +1140,7 @@ renderClientListSidebar();
     x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight,
     r: Math.random()*1.1+0.2, a: Math.random()*0.6+0.15
   }));
-  ctx.fillStyle='#E4C68C';
+  ctx.fillStyle='#9DB6DE';
   stars.forEach(s=>{ ctx.globalAlpha=s.a; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,7); ctx.fill(); });
 })();
 </script>
