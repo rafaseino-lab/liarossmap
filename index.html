@@ -1162,8 +1162,12 @@ renderClientListSidebar();
       next.focus();
       try { if(next.select) next.select(); } catch(_){}
     } else {
-      const btn = scope.querySelector('.btn-primary');
-      if(btn) btn.click();
+      // último campo: aciona o botão primário que vem depois dos campos (ex.: Calcular)
+      const btns = Array.from(scope.querySelectorAll('.btn-primary'))
+        .filter(b => b.offsetParent !== null);
+      let target = btns.find(b => el.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      if(!target) target = btns[0];
+      if(target) target.click();
     }
   });
 })();
