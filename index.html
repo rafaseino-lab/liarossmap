@@ -1143,6 +1143,30 @@ renderClientListSidebar();
   ctx.fillStyle='#9DB6DE';
   stars.forEach(s=>{ ctx.globalAlpha=s.a; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,7); ctx.fill(); });
 })();
+
+/* ---------- Enter avança para o próximo campo ---------- */
+(function(){
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+    const el = e.target;
+    // Enter no textarea (ex.: Notas) mantém a quebra de linha normal
+    if(!el || (el.tagName !== 'INPUT' && el.tagName !== 'SELECT')) return;
+    if(el.type === 'button' || el.type === 'submit') return;
+    e.preventDefault();
+    const scope = el.closest('.card') || document;
+    const fields = Array.from(scope.querySelectorAll('input, select, textarea'))
+      .filter(f => !f.disabled && !f.readOnly && f.offsetParent !== null);
+    const i = fields.indexOf(el);
+    if(i > -1 && i < fields.length - 1){
+      const next = fields[i + 1];
+      next.focus();
+      try { if(next.select) next.select(); } catch(_){}
+    } else {
+      const btn = scope.querySelector('.btn-primary');
+      if(btn) btn.click();
+    }
+  });
+})();
 </script>
 </body>
 </html>
