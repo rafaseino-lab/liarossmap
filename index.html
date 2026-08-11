@@ -523,7 +523,7 @@ const SIGNS = [
   {name:'Sagitário', glyph:'♐', elem:'fire'}, {name:'Capricórnio', glyph:'♑', elem:'earth'},
   {name:'Aquário', glyph:'♒', elem:'air'}, {name:'Peixes', glyph:'♓', elem:'water'}
 ];
-const ELEM_COLOR = {fire:'#DC2626', earth:'#4D7C0F', air:'#2F73B0', water:'#3B4F9E'};
+const ELEM_COLOR = {fire:'#C0392B', earth:'#3E7D44', air:'#B08400', water:'#2E6DB4'};
 function signOf(lon){ return SIGNS[Math.floor(norm360(lon)/30)]; }
 function degInSign(lon){ return norm360(lon)%30; }
 function fmtDeg(lon){
@@ -652,67 +652,90 @@ function computeCosmoPictures(bodies, orb){
    ============================================================ */
 function renderWheel(chart, cusps, size){
   const cx=size/2, cy=size/2;
-  const rOuter = size*0.46, rZodiac = size*0.40, rHouse = size*0.33, rPlanet = size*0.27, rInner = size*0.16;
+  const rOuter=size*0.47, rZodiac=size*0.395, rHouseNum=size*0.35, rPlanet=size*0.30, rInner=size*0.15;
   const angleFor = lon => deg2rad(180 - (lon - chart.asc)); // Asc on the left (9 o'clock), counterclockwise increase
   const pt = (r,lon) => { const a=angleFor(lon); return [cx + r*Math.cos(a), cy - r*Math.sin(a)]; };
+  const F = n => (Math.round(n*100)/100);
+  function sector(r1,r2,l0,l1,steps){
+    let d='';
+    for(let i=0;i<=steps;i++){ const lon=l0+(l1-l0)*i/steps; const [x,y]=pt(r2,lon); d+=(i?'L':'M')+F(x)+' '+F(y)+' '; }
+    for(let i=steps;i>=0;i--){ const lon=l0+(l1-l0)*i/steps; const [x,y]=pt(r1,lon); d+='L'+F(x)+' '+F(y)+' '; }
+    return d+'Z';
+  }
 
   let svg = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
-  svg += `<circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="none" stroke="#B7C5DB" stroke-width="1"/>`;
 
-  // zodiac ring segments
+  // zodiac band tinted by element
   for(let s=0;s<12;s++){
-    const lonStart = s*30;
-    const a0 = angleFor(lonStart), a1 = angleFor(lonStart+30);
-    const [x0,y0] = pt(rOuter, lonStart), [x1,y1] = pt(rZodiac, lonStart);
-    svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="#DBE3EF" stroke-width="1"/>`;
-    const midLon = lonStart+15;
-    const [gx,gy] = pt((rOuter+rZodiac)/2, midLon);
-    svg += `<text x="${gx}" y="${gy}" fill="${ELEM_COLOR[SIGNS[s].elem]}" font-size="${size*0.032}" text-anchor="middle" dominant-baseline="central">${SIGNS[s].glyph}</text>`;
+    svg += `<path d="${sector(rZodiac,rOuter,s*30,s*30+30,10)}" fill="${ELEM_COLOR[SIGNS[s].elem]}" opacity="0.16" stroke="none"/>`;
   }
-  svg += `<circle cx="${cx}" cy="${cy}" r="${rZodiac}" fill="none" stroke="#B7C5DB" stroke-width="1"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="none" stroke="#8FA0BC" stroke-width="1.3"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${rZodiac}" fill="none" stroke="#8FA0BC" stroke-width="1.3"/>`;
 
-  // house cusps
-  for(let h=1;h<=12;h++){
-    const lon = cusps[h];
-    const [x0,y0] = pt(rZodiac, lon), [x1,y1] = pt(rInner, lon);
-    const major = (h===1||h===4||h===7||h===10);
-    svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${major?'#2563EB':'#D3DEEC'}" stroke-width="${major?1.4:0.7}"/>`;
-    const midLon = norm360(lon + norm360(cusps[h===12?1:h+1]-lon)/2);
-    const [nx,ny] = pt(rHouse-8, midLon);
-    svg += `<text x="${nx}" y="${ny}" fill="#6B7A93" font-size="${size*0.021}" text-anchor="middle" dominant-baseline="central">${h}</text>`;
+  // sign divisions + glyphs
+  for(let s=0;s<12;s++){
+    const [x0,y0]=pt(rZodiac,s*30), [x1,y1]=pt(rOuter,s*30);
+    svg += `<line x1="${F(x0)}" y1="${F(y0)}" x2="${F(x1)}" y2="${F(y1)}" stroke="#8FA0BC" stroke-width="1"/>`;
+    const [gx,gy]=pt((rOuter+rZodiac)/2, s*30+15);
+    svg += `<text x="${F(gx)}" y="${F(gy)}" fill="${ELEM_COLOR[SIGNS[s].elem]}" font-size="${size*0.038}" text-anchor="middle" dominant-baseline="central">${SIGNS[s].glyph}︎</text>`;
   }
-  svg += `<circle cx="${cx}" cy="${cy}" r="${rInner}" fill="none" stroke="#DBE3EF" stroke-width="1"/>`;
+
+  // degree ticks on inner edge of zodiac band
+  for(let d=0; d<360; d++){
+    const isTen=d%10===0, isFive=d%5===0;
+    const len = isTen ? size*0.024 : (isFive ? size*0.015 : size*0.008);
+    const [x0,y0]=pt(rZodiac, d), [x1,y1]=pt(rZodiac-len, d);
+    svg += `<line x1="${F(x0)}" y1="${F(y0)}" x2="${F(x1)}" y2="${F(y1)}" stroke="#A7B6CC" stroke-width="${isTen?0.9:0.5}"/>`;
+  }
+
+  // house cusps + numbers
+  for(let h=1;h<=12;h++){
+    const lon=cusps[h];
+    const [x0,y0]=pt(rZodiac,lon), [x1,y1]=pt(rInner,lon);
+    const major=(h===1||h===4||h===7||h===10);
+    svg += `<line x1="${F(x0)}" y1="${F(y0)}" x2="${F(x1)}" y2="${F(y1)}" stroke="${major?'#334155':'#C3D0E4'}" stroke-width="${major?1.3:0.7}"${major?'':' stroke-dasharray="2,3"'}/>`;
+    const midLon = norm360(lon + norm360(cusps[h===12?1:h+1]-lon)/2);
+    const [nx,ny]=pt(rHouseNum, midLon);
+    svg += `<text x="${F(nx)}" y="${F(ny)}" fill="#94A2B8" font-size="${size*0.024}" text-anchor="middle" dominant-baseline="central">${h}</text>`;
+  }
+  svg += `<circle cx="${cx}" cy="${cy}" r="${rInner}" fill="none" stroke="#C3D0E4" stroke-width="1"/>`;
+
+  // axis lines ASC / DSC / MC / IC
+  [['ASC',chart.asc],['DSC',chart.asc+180],['MC',chart.mc],['IC',chart.mc+180]].forEach(([lbl,lon])=>{
+    const [x0,y0]=pt(rInner,lon), [x1,y1]=pt(rZodiac,lon);
+    svg += `<line x1="${F(x0)}" y1="${F(y0)}" x2="${F(x1)}" y2="${F(y1)}" stroke="#334155" stroke-width="1.6"/>`;
+    const [lx,ly]=pt(rZodiac+size*0.028, lon);
+    svg += `<text x="${F(lx)}" y="${F(ly)}" fill="#0E7490" font-size="${size*0.024}" font-weight="600" text-anchor="middle" dominant-baseline="central">${lbl}</text>`;
+  });
 
   // aspect lines (behind planets)
   const orb = parseFloat(document.getElementById('fOrb').value)||6;
   const asps = computeAspects(chart.bodies, orb);
+  const aspColor = name => (name==='Oposição'||name==='Quadratura') ? '#D64530'
+                         : (name==='Trígono'||name==='Sextil') ? '#2E6DB4' : '#16A34A';
   asps.forEach(asp=>{
     if(asp.a==='Ascendente'||asp.b==='Ascendente') return;
-    const [x0,y0] = pt(rInner, chart.bodies[asp.a].lon);
-    const [x1,y1] = pt(rInner, chart.bodies[asp.b].lon);
-    const colors = {'asp-conj':'#2563EB','asp-opp':'#DC2626','asp-sq':'#EF4444','asp-tri':'#0891B2','asp-sext':'#0E7490'};
-    const dash = asp.aspect.name==='Oposição' ? '4,3' : (asp.aspect.name==='Quadratura' ? '2,2' : '0');
-    svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${colors[asp.aspect.cls]}" stroke-width="0.9" opacity="0.55" stroke-dasharray="${dash}"/>`;
+    const [x0,y0]=pt(rInner, chart.bodies[asp.a].lon);
+    const [x1,y1]=pt(rInner, chart.bodies[asp.b].lon);
+    svg += `<line x1="${F(x0)}" y1="${F(y0)}" x2="${F(x1)}" y2="${F(y1)}" stroke="${aspColor(asp.aspect.name)}" stroke-width="1" opacity="0.8"/>`;
   });
 
-  // planets
-  const placed = [];
-  Object.keys(chart.bodies).forEach(name=>{
-    if(name==='Meio do Céu') return;
-    let lon = chart.bodies[name].lon;
-    let r = rPlanet;
-    // simple de-clutter: nudge radius if close to another already placed
-    for(const p of placed){
-      if(Math.abs(normPM180(lon-p.lon)) < (360/size*40)){ r -= 0; }
-    }
-    placed.push({lon});
-    const [x,y] = pt(r, lon);
-    const isAngle = name==='Ascendente';
-    svg += `<circle cx="${x}" cy="${y}" r="${size*0.024}" fill="#FFFFFF" stroke="${isAngle?'#0E7490':'#2563EB'}" stroke-width="1"/>`;
-    svg += `<text x="${x}" y="${y}" fill="${isAngle?'#0E7490':'#1D4ED8'}" font-size="${size*0.026}" text-anchor="middle" dominant-baseline="central">${PLANET_GLYPH[name]}</text>`;
-    if(chart.bodies[name].retro){
-      svg += `<text x="${x+size*0.02}" y="${y-size*0.02}" fill="#DC2626" font-size="${size*0.016}">℞</text>`;
-    }
+  // planets (com afastamento p/ não sobrepor + tracinho até o grau exato)
+  const items = Object.keys(chart.bodies)
+    .filter(n=>n!=='Meio do Céu' && n!=='Ascendente')
+    .map(n=>({name:n, lon:norm360(chart.bodies[n].lon), retro:chart.bodies[n].retro}))
+    .sort((a,b)=>a.lon-b.lon);
+  const minSep = 7.5;
+  const disp = items.map(it=>it.lon);
+  for(let i=1;i<disp.length;i++){ if(disp[i]-disp[i-1] < minSep) disp[i]=disp[i-1]+minSep; }
+  items.forEach((it,i)=>{
+    const [sx0,sy0]=pt(rZodiac, it.lon), [sx1,sy1]=pt(rPlanet+size*0.03, it.lon);
+    svg += `<line x1="${F(sx0)}" y1="${F(sy0)}" x2="${F(sx1)}" y2="${F(sy1)}" stroke="#B7C5DB" stroke-width="0.6"/>`;
+    const [x,y]=pt(rPlanet, disp[i]);
+    svg += `<circle cx="${F(x)}" cy="${F(y)}" r="${size*0.027}" fill="#FFFFFF" stroke="#2E6DB4" stroke-width="1"/>`;
+    svg += `<text x="${F(x)}" y="${F(y)}" fill="#1D4ED8" font-size="${size*0.032}" text-anchor="middle" dominant-baseline="central">${PLANET_GLYPH[it.name]}</text>`;
+    const [dx,dy]=pt(rPlanet-size*0.048, disp[i]);
+    svg += `<text x="${F(dx)}" y="${F(dy)}" fill="#586A86" font-size="${size*0.02}" text-anchor="middle" dominant-baseline="central">${Math.floor(degInSign(it.lon))}°${it.retro?' ℞':''}</text>`;
   });
 
   svg += `</svg>`;
@@ -753,7 +776,7 @@ function renderDial(bodies, orbCosmo, size){
    STORAGE
    ============================================================ */
 async function saveClient(data){
-  const id = data.id || ('c_'+Date.now());
+  const id = data.id || ('c_'+Date.now()+'_'+Math.floor(Math.random()*1e6));
   data.id = id;
   try{
     localStorage.setItem('client:'+id, JSON.stringify(data));
@@ -1304,25 +1327,40 @@ async function renderClientesFull(){
     </div>`;
     return;
   }
-  const clients = await Promise.all(idx.reverse().map(loadClient));
-  wrap.innerHTML = `<div class="card">
-    <table>
-      <thead><tr><th>Nome</th><th>Nascimento</th><th>Local</th><th></th></tr></thead>
-      <tbody>
-        ${clients.filter(Boolean).map(c=>`
-          <tr>
-            <td class="planet-name">${c.name}</td>
-            <td>${formatDateBR(c.dateVal)} ${c.timeVal}</td>
-            <td style="font-family:'Inter',sans-serif;">${c.place||'—'}</td>
-            <td><button class="btn btn-ghost" style="padding:6px 12px; font-size:11.5px;" data-open="${c.id}">Abrir mapa</button></td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  </div>`;
-  wrap.querySelectorAll('[data-open]').forEach(b=>{
-    b.onclick=()=>openClient(b.dataset.open);
-  });
+  const clients = (await Promise.all(idx.reverse().map(loadClient))).filter(Boolean);
+  wrap.innerHTML = `
+    <div class="field full" style="max-width:440px; margin-bottom:16px; position:relative;">
+      <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-dim); pointer-events:none; display:flex;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </span>
+      <input id="cliSearch" placeholder="Buscar cliente por nome…" autocomplete="off" style="padding-left:34px;">
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Nome</th><th>Nascimento</th><th>Local</th><th></th></tr></thead>
+        <tbody id="cliTbody"></tbody>
+      </table>
+      <div id="cliEmpty" class="hint" style="display:none; padding-top:12px;">Nenhum cliente encontrado com esse nome.</div>
+    </div>`;
+  const tbody = document.getElementById('cliTbody');
+  const emptyMsg = document.getElementById('cliEmpty');
+  function draw(q){
+    const term = (q||'').trim().toLowerCase();
+    const list = term ? clients.filter(c=>(c.name||'').toLowerCase().includes(term)) : clients;
+    tbody.innerHTML = list.map(c=>`
+      <tr>
+        <td class="planet-name">${c.name}</td>
+        <td>${formatDateBR(c.dateVal)} ${c.timeVal}</td>
+        <td style="font-family:'Inter',sans-serif;">${c.place||'—'}</td>
+        <td><button class="btn btn-ghost" style="padding:6px 12px; font-size:11.5px;" data-open="${c.id}">Abrir mapa</button></td>
+      </tr>`).join('');
+    emptyMsg.style.display = list.length ? 'none' : 'block';
+    tbody.querySelectorAll('[data-open]').forEach(b=>{ b.onclick=()=>openClient(b.dataset.open); });
+  }
+  draw('');
+  const search = document.getElementById('cliSearch');
+  search.addEventListener('input', ()=>draw(search.value));
+  search.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); } });
 }
 
 renderClientListSidebar();
@@ -1339,6 +1377,28 @@ renderClientListSidebar();
   }));
   ctx.fillStyle='#9DB6DE';
   stars.forEach(s=>{ ctx.globalAlpha=s.a; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,7); ctx.fill(); });
+})();
+
+/* ---------- Data/hora avançam sozinho ao completar ---------- */
+(function(){
+  const fDate=document.getElementById('fDate'), fTime=document.getElementById('fTime'), fTz=document.getElementById('fTz');
+  let dT, tT;
+  if(fDate && fTime){
+    fDate.addEventListener('input', function(){
+      clearTimeout(dT);
+      const v=fDate.value;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+      if(+v.slice(0,4) < 1000) return;
+      dT=setTimeout(()=>{ if(document.activeElement===fDate) fTime.focus(); }, 250);
+    });
+  }
+  if(fTime && fTz){
+    fTime.addEventListener('input', function(){
+      clearTimeout(tT);
+      if(!/^\d{2}:\d{2}$/.test(fTime.value)) return;
+      tT=setTimeout(()=>{ if(document.activeElement===fTime){ fTz.focus(); try{fTz.select();}catch(e){} } }, 650);
+    });
+  }
 })();
 
 /* ---------- Enter avança para o próximo campo ---------- */
