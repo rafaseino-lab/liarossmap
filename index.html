@@ -188,10 +188,48 @@
   .city-results .ci:hover{background:var(--panel-2);}
   .city-results .ci .sub{color:var(--text-dim); font-size:11.5px; font-weight:400;}
   .city-results .empty-ci{padding:11px 12px; font-size:12.5px; color:var(--text-dim);}
+
+  .auth-overlay{position:fixed; inset:0; z-index:100; background:rgba(23,35,63,.45); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; padding:20px;}
+  .auth-overlay.show{display:flex;}
+  .auth-card{background:var(--panel); border:1px solid var(--border-soft); border-radius:14px; padding:30px 28px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(23,35,63,.2);}
+  .auth-card h2{font-family:'Spectral',serif; font-weight:500; font-size:20px; color:var(--gold-bright); margin:0 0 4px; display:flex; align-items:center; gap:8px;}
+  .auth-card p.sub{font-size:12.5px; color:var(--text-muted); margin:0 0 20px;}
+  .auth-card label{font-size:11.5px; color:var(--text-muted); display:block; margin-bottom:5px;}
+  .auth-card input{width:100%; background:#FFFFFF; border:1px solid var(--border); border-radius:7px; color:var(--text); padding:10px 11px; font-size:13.5px; font-family:'Inter',sans-serif; outline:none; margin-bottom:14px;}
+  .auth-card input:focus{border-color:var(--gold); box-shadow:0 0 0 3px rgba(37,99,235,.15);}
+  .auth-msg{font-size:12px; min-height:16px; margin-bottom:10px; line-height:1.4;}
+  .auth-msg.err{color:var(--rust);}
+  .auth-msg.ok{color:#16A34A;}
+  .auth-actions{display:flex; gap:10px;}
+  .auth-actions .btn{flex:1; justify-content:center;}
+  .auth-toggle{font-size:12px; color:var(--text-muted); margin-top:16px; text-align:center;}
+  .auth-toggle a{color:var(--gold-bright); cursor:pointer; text-decoration:underline;}
+  .acct{font-size:11.5px; padding-top:14px; margin-top:14px; border-top:1px solid var(--border-soft);}
+  .acct .who{color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; margin-bottom:6px;}
+  .acct .btn-mini{all:unset; cursor:pointer; font-size:11.5px; color:var(--gold-bright); text-decoration:underline;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <canvas class="stars" id="stars"></canvas>
+
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <h2>✦ <span id="authTitle">Entrar</span></h2>
+    <p class="sub" id="authSub">Acesse sua conta para salvar e sincronizar seus clientes na nuvem, em qualquer aparelho.</p>
+    <label>Email</label>
+    <input id="authEmail" type="email" autocomplete="email" placeholder="voce@email.com">
+    <label>Senha</label>
+    <input id="authPass" type="password" autocomplete="current-password" placeholder="mínimo 6 caracteres">
+    <div class="auth-msg" id="authMsg"></div>
+    <div class="auth-actions">
+      <button class="btn btn-ghost" id="authCancel" type="button">Fechar</button>
+      <button class="btn btn-primary" id="authSubmit" type="button">Entrar</button>
+    </div>
+    <div class="auth-toggle" id="authToggle"></div>
+  </div>
+</div>
+
 <div class="app">
 
   <aside class="sidebar">
@@ -213,6 +251,8 @@
       <div style="font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Mapas recentes</div>
       <div class="client-list" id="clientList"></div>
     </div>
+
+    <div class="acct" id="acctBox"></div>
 
     <div class="sidebar-foot">
       Motor de efemérides próprio (elementos keplerianos + série lunar reduzida). Precisão aproximada — adequado para estudo. Para uso profissional, confira com Swiss Ephemeris.
@@ -773,35 +813,150 @@ function renderDial(bodies, orbCosmo, size){
 }
 
 /* ============================================================
-   STORAGE
+   SUPABASE + STORAGE (nuvem)
    ============================================================ */
-async function saveClient(data){
-  const id = data.id || ('c_'+Date.now()+'_'+Math.floor(Math.random()*1e6));
-  data.id = id;
-  try{
-    localStorage.setItem('client:'+id, JSON.stringify(data));
-    let idx = [];
-    try{ idx = JSON.parse(localStorage.getItem('clients-index')) || []; }catch(e){ idx=[]; }
-    if(!idx.includes(id)) idx.push(id);
-    localStorage.setItem('clients-index', JSON.stringify(idx));
-  }catch(e){
-    alert('Não foi possível salvar: o armazenamento do navegador está indisponível (verifique se está em modo anônimo ou com cookies bloqueados).');
-    throw e;
-  }
-  return id;
+const SB_URL = 'https://nrwqnyfwownrjgmdjopp.supabase.co';
+const SB_KEY = 'sb_publishable__tMyl8IMVhGZFMVNQ4P1jg_fnH7JH-Z';
+const sb = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+
+async function currentUser(){
+  if(!sb) return null;
+  try{ const {data} = await sb.auth.getUser(); return data.user || null; }catch(e){ return null; }
 }
-async function loadClientIndex(){
-  try{ return JSON.parse(localStorage.getItem('clients-index')) || []; }catch(e){ return []; }
+async function isLogged(){ return !!(await currentUser()); }
+
+async function loadAllClients(){
+  if(!sb) return [];
+  const {data, error} = await sb.from('clients').select('id,data,created_at').order('created_at',{ascending:false});
+  if(error){ console.error('load', error); return []; }
+  return (data||[]).map(r=>({...(r.data||{}), id:r.id}));
 }
 async function loadClient(id){
-  try{ return JSON.parse(localStorage.getItem('client:'+id)); }catch(e){ return null; }
+  if(!sb) return null;
+  const {data, error} = await sb.from('clients').select('data').eq('id', id).single();
+  if(error){ console.error('loadOne', error); return null; }
+  return {...(data.data||{}), id};
+}
+async function saveClient(data){
+  const user = await currentUser();
+  if(!user){ openAuth('signin'); throw new Error('no-auth'); }
+  const payload = {...data}; const id = payload.id; delete payload.id;
+  if(id){
+    const {error} = await sb.from('clients').update({data:payload}).eq('id', id);
+    if(error){ alert('Erro ao salvar: '+error.message); throw error; }
+    return id;
+  }
+  const {data:row, error} = await sb.from('clients').insert({data:payload}).select('id').single();
+  if(error){ alert('Erro ao salvar: '+error.message); throw error; }
+  return row.id;
 }
 async function deleteClient(id){
-  try{ localStorage.removeItem('client:'+id); }catch(e){}
-  let idx = await loadClientIndex();
-  idx = idx.filter(x=>x!==id);
-  try{ localStorage.setItem('clients-index', JSON.stringify(idx)); }catch(e){}
+  if(!sb) return;
+  const {error} = await sb.from('clients').delete().eq('id', id);
+  if(error) console.error('del', error);
 }
+
+/* ============================================================
+   AUTENTICAÇÃO (login / cadastro)
+   ============================================================ */
+let authMode = 'signin';
+function openAuth(mode){
+  authMode = mode || 'signin';
+  renderAuthMode();
+  document.getElementById('authMsg').textContent = '';
+  document.getElementById('authOverlay').classList.add('show');
+  setTimeout(()=>document.getElementById('authEmail').focus(), 50);
+}
+function closeAuth(){ document.getElementById('authOverlay').classList.remove('show'); }
+function renderAuthMode(){
+  const signin = authMode==='signin';
+  document.getElementById('authTitle').textContent = signin ? 'Entrar' : 'Criar conta';
+  document.getElementById('authSub').textContent = signin
+    ? 'Acesse sua conta para ver e salvar seus clientes na nuvem, em qualquer aparelho.'
+    : 'Crie sua conta para salvar seus clientes na nuvem e acessar de qualquer aparelho.';
+  document.getElementById('authSubmit').textContent = signin ? 'Entrar' : 'Criar conta';
+  document.getElementById('authToggle').innerHTML = signin
+    ? 'Ainda não tem conta? <a id="authSwitch">Criar conta</a>'
+    : 'Já tem conta? <a id="authSwitch">Entrar</a>';
+  const sw = document.getElementById('authSwitch');
+  if(sw) sw.onclick = ()=>{ authMode = signin?'signup':'signin'; renderAuthMode(); document.getElementById('authMsg').textContent=''; };
+  document.getElementById('authPass').setAttribute('autocomplete', signin?'current-password':'new-password');
+}
+function traduzErro(m){
+  m=(m||'').toLowerCase();
+  if(m.includes('invalid login')) return 'Email ou senha incorretos.';
+  if(m.includes('already registered')||m.includes('already been registered')) return 'Esse email já tem conta. Tente entrar.';
+  if(m.includes('password should be at least')) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if(m.includes('unable to validate email')||m.includes('invalid email')) return 'Email inválido.';
+  if(m.includes('email not confirmed')) return 'Confirme seu email antes de entrar.';
+  return m;
+}
+async function doAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  const msg = document.getElementById('authMsg');
+  msg.className = 'auth-msg';
+  if(!email || !pass){ msg.className='auth-msg err'; msg.textContent='Preencha email e senha.'; return; }
+  if(!sb){ msg.className='auth-msg err'; msg.textContent='Conexão indisponível no momento.'; return; }
+  const btn = document.getElementById('authSubmit'); btn.style.opacity='.6';
+  try{
+    const res = authMode==='signup'
+      ? await sb.auth.signUp({email, password:pass})
+      : await sb.auth.signInWithPassword({email, password:pass});
+    if(res.error){ msg.className='auth-msg err'; msg.textContent=traduzErro(res.error.message); return; }
+    if(authMode==='signup' && !res.data.session){
+      msg.className='auth-msg ok'; msg.textContent='Conta criada! Agora clique em Entrar.'; authMode='signin'; renderAuthMode(); return;
+    }
+    closeAuth();
+  }catch(e){ msg.className='auth-msg err'; msg.textContent='Erro: '+e.message; }
+  finally{ btn.style.opacity='1'; renderAuthMode(); }
+}
+async function updateAcctBox(){
+  const box = document.getElementById('acctBox'); if(!box) return;
+  const user = await currentUser();
+  if(user){
+    box.innerHTML = `<span class="who" title="${user.email}">✦ ${user.email}</span><button class="btn-mini" id="btnLogout">Sair</button>`;
+    document.getElementById('btnLogout').onclick = async ()=>{ await sb.auth.signOut(); };
+  } else {
+    box.innerHTML = `<button class="btn-mini" id="btnLoginSide">Entrar / Criar conta</button>`;
+    document.getElementById('btnLoginSide').onclick = ()=>openAuth('signin');
+  }
+}
+async function maybeMigrateLocal(){
+  let idx=[]; try{ idx=JSON.parse(localStorage.getItem('clients-index'))||[]; }catch(e){}
+  if(!idx.length || localStorage.getItem('migrated_v1')==='1') return;
+  if(!confirm('Encontramos '+idx.length+' cliente(s) salvos neste navegador. Deseja enviá-los para a sua conta na nuvem?')){ localStorage.setItem('migrated_v1','1'); return; }
+  let ok=0;
+  for(const id of idx){
+    let c=null; try{ c=JSON.parse(localStorage.getItem('client:'+id)); }catch(e){}
+    if(!c) continue;
+    const payload={...c}; delete payload.id;
+    const {error}=await sb.from('clients').insert({data:payload});
+    if(!error) ok++;
+  }
+  localStorage.setItem('migrated_v1','1');
+  alert(ok+' cliente(s) enviados para a nuvem.');
+  renderClientListSidebar();
+}
+(function(){
+  const ov = document.getElementById('authOverlay'); if(!ov) return;
+  document.getElementById('authSubmit').onclick = doAuth;
+  document.getElementById('authCancel').onclick = closeAuth;
+  document.getElementById('authEmail').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); document.getElementById('authPass').focus(); }});
+  document.getElementById('authPass').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); doAuth(); }});
+  ov.addEventListener('click', e=>{ if(e.target===ov) closeAuth(); });
+  renderAuthMode();
+  updateAcctBox();
+  if(sb){
+    sb.auth.onAuthStateChange((event, session)=>{
+      updateAcctBox();
+      renderClientListSidebar();
+      const cv = document.getElementById('viewClientes');
+      if(cv && cv.style.display!=='none') renderClientesFull();
+      if(event==='SIGNED_IN') maybeMigrateLocal();
+    });
+  }
+})();
 
 /* ============================================================
    UI
@@ -1273,10 +1428,15 @@ function formatDateBR(dateVal){
 
 /* ---------- Sidebar client list & Clientes view ---------- */
 async function renderClientListSidebar(){
-  const idx = await loadClientIndex();
   const list = document.getElementById('clientList');
-  if(idx.length===0){ list.innerHTML = `<div style="font-size:11.5px; color:var(--text-dim); padding:6px 2px;">Nenhum cliente salvo ainda.</div>`; return; }
-  const clients = await Promise.all(idx.slice(-8).reverse().map(loadClient));
+  if(!list) return;
+  if(!(await isLogged())){
+    list.innerHTML = `<div style="font-size:11.5px; color:var(--text-dim); padding:6px 2px;">Entre na sua conta para ver seus clientes.</div>`;
+    return;
+  }
+  const all = await loadAllClients();
+  if(all.length===0){ list.innerHTML = `<div style="font-size:11.5px; color:var(--text-dim); padding:6px 2px;">Nenhum cliente salvo ainda.</div>`; return; }
+  const clients = all.slice(0,8);
   list.innerHTML = clients.filter(Boolean).map(c=>`
     <div class="client-item" data-id="${c.id}">
       <span class="name">${c.name}</span>
@@ -1318,16 +1478,25 @@ async function openClient(id){
 }
 
 async function renderClientesFull(){
-  const idx = await loadClientIndex();
   const wrap = document.getElementById('clientesFull');
-  if(idx.length===0){
+  if(!wrap) return;
+  if(!(await isLogged())){
+    wrap.innerHTML = `<div class="card empty">
+      <svg width="46" height="46" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#586A86" stroke-width="1.2"/></svg>
+      <div>Entre na sua conta para ver e sincronizar seus clientes salvos na nuvem.</div>
+      <button class="btn btn-primary" id="cliLoginBtn" style="margin-top:6px;">Entrar / Criar conta</button>
+    </div>`;
+    const b=document.getElementById('cliLoginBtn'); if(b) b.onclick=()=>openAuth('signin');
+    return;
+  }
+  const clients = await loadAllClients();
+  if(clients.length===0){
     wrap.innerHTML = `<div class="card empty">
       <svg width="46" height="46" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#586A86" stroke-width="1.2"/></svg>
       <div>Nenhum cliente salvo ainda. Calcule um mapa e clique em "Salvar cliente".</div>
     </div>`;
     return;
   }
-  const clients = (await Promise.all(idx.reverse().map(loadClient))).filter(Boolean);
   wrap.innerHTML = `
     <div class="field full" style="max-width:440px; margin-bottom:16px; position:relative;">
       <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-dim); pointer-events:none; display:flex;">
