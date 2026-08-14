@@ -821,39 +821,70 @@ const sb = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null
 
 async function currentUser(){
   if(!sb) return null;
-  try{ const {data} = await sb.auth.getUser(); return data.user || null; }catch(e){ return null; }
+  try{ const {data} = await sb.auth.getSession(); return data.session ? data.session.user : null; }catch(e){ return null; }
 }
 async function isLogged(){ return !!(await currentUser()); }
 
+/* ---- armazenamento local (fallback quando não logada) ---- */
+function localIndex(){ try{ return JSON.parse(localStorage.getItem('clients-index'))||[]; }catch(e){ return []; } }
+function saveClientLocal(data){
+  const id = data.id || ('c_'+Date.now()+'_'+Math.floor(Math.random()*1e6));
+  const rec = {...data, id};
+  try{
+    localStorage.setItem('client:'+id, JSON.stringify(rec));
+    const idx = localIndex(); if(!idx.includes(id)){ idx.push(id); localStorage.setItem('clients-index', JSON.stringify(idx)); }
+  }catch(e){ alert('Não foi possível salvar neste navegador (verifique se está em modo anônimo ou com cookies bloqueados).'); throw e; }
+  return id;
+}
+function loadAllClientsLocal(){
+  const out=[];
+  localIndex().slice().reverse().forEach(id=>{ try{ const c=JSON.parse(localStorage.getItem('client:'+id)); if(c) out.push(c); }catch(e){} });
+  return out;
+}
+
 async function loadAllClients(){
-  if(!sb) return [];
-  const {data, error} = await sb.from('clients').select('id,data,created_at').order('created_at',{ascending:false});
-  if(error){ console.error('load', error); return []; }
-  return (data||[]).map(r=>({...(r.data||{}), id:r.id}));
+  const user = await currentUser();
+  if(user){
+    const {data, error} = await sb.from('clients').select('id,data,created_at').order('created_at',{ascending:false});
+    if(error){ console.error('load', error); return []; }
+    return (data||[]).map(r=>({...(r.data||{}), id:r.id}));
+  }
+  return loadAllClientsLocal();
 }
 async function loadClient(id){
-  if(!sb) return null;
-  const {data, error} = await sb.from('clients').select('data').eq('id', id).single();
-  if(error){ console.error('loadOne', error); return null; }
-  return {...(data.data||{}), id};
+  const user = await currentUser();
+  if(user){
+    const {data, error} = await sb.from('clients').select('data').eq('id', id).single();
+    if(error){ console.error('loadOne', error); return null; }
+    return {...(data.data||{}), id};
+  }
+  try{ return JSON.parse(localStorage.getItem('client:'+id)); }catch(e){ return null; }
 }
 async function saveClient(data){
   const user = await currentUser();
-  if(!user){ openAuth('signin'); throw new Error('no-auth'); }
-  const payload = {...data}; const id = payload.id; delete payload.id;
-  if(id){
-    const {error} = await sb.from('clients').update({data:payload}).eq('id', id);
+  if(user){
+    const payload = {...data}; const id = payload.id; delete payload.id;
+    if(id && String(id).length>20){ // uuid da nuvem => update
+      const {error} = await sb.from('clients').update({data:payload}).eq('id', id);
+      if(error){ alert('Erro ao salvar: '+error.message); throw error; }
+      return id;
+    }
+    const {data:row, error} = await sb.from('clients').insert({data:payload}).select('id').single();
     if(error){ alert('Erro ao salvar: '+error.message); throw error; }
-    return id;
+    return row.id;
   }
-  const {data:row, error} = await sb.from('clients').insert({data:payload}).select('id').single();
-  if(error){ alert('Erro ao salvar: '+error.message); throw error; }
-  return row.id;
+  return saveClientLocal(data);
 }
 async function deleteClient(id){
-  if(!sb) return;
-  const {error} = await sb.from('clients').delete().eq('id', id);
-  if(error) console.error('del', error);
+  const user = await currentUser();
+  if(user){
+    const {error} = await sb.from('clients').delete().eq('id', id);
+    if(error) console.error('del', error);
+    return;
+  }
+  try{ localStorage.removeItem('client:'+id); }catch(e){}
+  const idx = localIndex().filter(x=>x!==id);
+  try{ localStorage.setItem('clients-index', JSON.stringify(idx)); }catch(e){}
 }
 
 /* ============================================================
@@ -1268,10 +1299,14 @@ function renderResult(chart, cusps, meta){
   });
 
   document.getElementById('btnSave').onclick = async ()=>{
-    const id = await saveClient({...meta});
-    currentMeta.id = id;
-    document.getElementById('saveStatus').textContent = 'Salvo ✓';
-    await renderClientListSidebar();
+    const st = document.getElementById('saveStatus');
+    try{
+      const id = await saveClient({...meta});
+      currentMeta.id = id;
+      const logged = await isLogged();
+      st.textContent = logged ? 'Salvo na nuvem ✓' : 'Salvo neste navegador ✓';
+      await renderClientListSidebar();
+    }catch(e){ st.textContent = 'Erro ao salvar'; }
   };
 
   let srIana = null;
@@ -1446,10 +1481,6 @@ function formatDateBR(dateVal){
 async function renderClientListSidebar(){
   const list = document.getElementById('clientList');
   if(!list) return;
-  if(!(await isLogged())){
-    list.innerHTML = `<div style="font-size:11.5px; color:var(--text-dim); padding:6px 2px;">Entre na sua conta para ver seus clientes.</div>`;
-    return;
-  }
   const all = await loadAllClients();
   if(all.length===0){ list.innerHTML = `<div style="font-size:11.5px; color:var(--text-dim); padding:6px 2px;">Nenhum cliente salvo ainda.</div>`; return; }
   const clients = all.slice(0,8);
@@ -1496,15 +1527,6 @@ async function openClient(id){
 async function renderClientesFull(){
   const wrap = document.getElementById('clientesFull');
   if(!wrap) return;
-  if(!(await isLogged())){
-    wrap.innerHTML = `<div class="card empty">
-      <svg width="46" height="46" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#586A86" stroke-width="1.2"/></svg>
-      <div>Entre na sua conta para ver e sincronizar seus clientes salvos na nuvem.</div>
-      <button class="btn btn-primary" id="cliLoginBtn" style="margin-top:6px;">Entrar / Criar conta</button>
-    </div>`;
-    const b=document.getElementById('cliLoginBtn'); if(b) b.onclick=()=>openAuth('signin');
-    return;
-  }
   const clients = await loadAllClients();
   if(clients.length===0){
     wrap.innerHTML = `<div class="card empty">
