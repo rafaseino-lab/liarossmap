@@ -268,7 +268,7 @@
         <h3>Dados do cliente</h3>
         <div class="grid">
           <div class="field"><label>Nome</label><input id="fName" placeholder="Nome completo"></div>
-          <div class="field"><label>Data de nascimento</label><input id="fDate" type="date"></div>
+          <div class="field"><label>Data de nascimento</label><input id="fDate" type="text" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="off"></div>
           <div class="field"><label>Hora de nascimento (local)</label><input id="fTime" type="time" step="60" value="12:00"></div>
           <div class="field"><label>Fuso horário (UTC offset, ex: -3 ou -4)</label><input id="fTz" type="number" step="0.5" value="-3"></div>
         </div>
@@ -1008,10 +1008,12 @@ function fmtOffset(o){
   const h = Math.floor(a); const mm = Math.round((a-h)*60);
   return 'UTC'+s+h+(mm ? (':'+String(mm).padStart(2,'0')) : '');
 }
+function isoToBR(iso){ if(!iso) return ''; const p=String(iso).split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : ''; }
+function brToISO(br){ const m=String(br||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(!m) return ''; const d=+m[1], mo=+m[2], y=+m[3]; if(mo<1||mo>12||d<1||d>31||y<100) return ''; return `${m[3]}-${m[2]}-${m[1]}`; }
 function recomputeTz(){
   const hint = document.getElementById('tzHint');
   if(!selectedIana){ if(hint) hint.textContent=''; return; }
-  const dv = document.getElementById('fDate').value;
+  const dv = brToISO(document.getElementById('fDate').value);
   if(!dv){ if(hint) hint.textContent='Escolha a data de nascimento para o fuso ser calculado automaticamente (com horário de verão).'; return; }
   const [y,m,d] = dv.split('-').map(Number);
   const tv = document.getElementById('fTime').value || '12:00';
@@ -1127,7 +1129,7 @@ document.getElementById('btnClear').onclick = ()=>{
 
 document.getElementById('btnCalc').onclick = async ()=>{
   const name = document.getElementById('fName').value || 'Sem nome';
-  const dateVal = document.getElementById('fDate').value;
+  const dateVal = brToISO(document.getElementById('fDate').value);
   const timeVal = document.getElementById('fTime').value || '12:00';
   const tz = parseFloat(document.getElementById('fTz').value)||0;
   const lat = parseFloat(document.getElementById('fLat').value);
@@ -1466,7 +1468,7 @@ async function openClient(id){
   if(!c) return;
   document.querySelector('[data-nav="novo"]').click();
   document.getElementById('fName').value = c.name;
-  document.getElementById('fDate').value = c.dateVal;
+  document.getElementById('fDate').value = isoToBR(c.dateVal);
   document.getElementById('fTime').value = c.timeVal;
   document.getElementById('fTz').value = c.tz;
   document.getElementById('fLat').value = c.lat;
@@ -1555,10 +1557,15 @@ renderClientListSidebar();
   if(fDate && fTime){
     fDate.addEventListener('input', function(){
       clearTimeout(dT);
-      const v=fDate.value;
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
-      if(+v.slice(0,4) < 1000) return;
-      dT=setTimeout(()=>{ if(document.activeElement===fDate) fTime.focus(); }, 250);
+      let digits = fDate.value.replace(/\D/g,'').slice(0,8);
+      let out = digits;
+      if(digits.length>=5) out = digits.slice(0,2)+'/'+digits.slice(2,4)+'/'+digits.slice(4);
+      else if(digits.length>=3) out = digits.slice(0,2)+'/'+digits.slice(2);
+      fDate.value = out;
+      if(digits.length===8){
+        if(typeof recomputeTz==='function') recomputeTz();
+        dT=setTimeout(()=>{ if(document.activeElement===fDate) fTime.focus(); }, 200);
+      }
     });
   }
   if(fTime && fTz){
