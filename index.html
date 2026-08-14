@@ -1074,8 +1074,15 @@ async function geocodeCity(q){
     recomputeTz();
   }
   cityBtn.onclick = doCitySearch;
+  let __cityT;
+  citySearch.addEventListener('input', function(){
+    clearTimeout(__cityT);
+    const q = citySearch.value.trim();
+    if(q.length < 3){ cityResults.style.display='none'; return; }
+    __cityT = setTimeout(doCitySearch, 350);
+  });
   citySearch.addEventListener('keydown', function(e){
-    if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); doCitySearch(); }
+    if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); clearTimeout(__cityT); doCitySearch(); }
   });
   document.addEventListener('click', function(e){
     if(!cityResults.contains(e.target) && e.target!==citySearch && e.target!==cityBtn){
@@ -1312,7 +1319,14 @@ function renderResult(chart, cusps, meta){
       });
     }
     b.onclick=search;
-    s.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); search(); }});
+    let __srCityT;
+    s.addEventListener('input', ()=>{
+      clearTimeout(__srCityT);
+      const q=s.value.trim();
+      if(q.length < 3){ rz.style.display='none'; return; }
+      __srCityT = setTimeout(search, 350);
+    });
+    s.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); clearTimeout(__srCityT); search(); }});
     const sy=document.getElementById('srYear'); if(sy) sy.addEventListener('change', srRecomputeTz);
     if(!window.__srCityDoc){
       window.__srCityDoc=true;
