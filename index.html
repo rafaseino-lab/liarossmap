@@ -207,6 +207,9 @@
   .acct{font-size:11.5px; padding-top:14px; margin-top:14px; border-top:1px solid var(--border-soft);}
   .acct .who{color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; margin-bottom:6px;}
   .acct .btn-mini{all:unset; cursor:pointer; font-size:11.5px; color:var(--gold-bright); text-decoration:underline;}
+  .cloud-banner{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; background:linear-gradient(100deg, rgba(37,99,235,.08), rgba(14,116,144,.06)); border:1px solid var(--border-soft); border-radius:12px; padding:13px 18px; margin-bottom:22px; font-size:13px; color:var(--text); line-height:1.5;}
+  .cloud-banner strong{color:var(--gold-bright);}
+  .cloud-banner .btn{white-space:nowrap; flex-shrink:0;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -260,6 +263,10 @@
   </aside>
 
   <main class="main">
+    <div class="cloud-banner" id="cloudBanner" style="display:none;">
+      <span>☁️ <strong>Salve seus clientes na nuvem</strong> e acesse de qualquer computador ou celular. Sem entrar, seus mapas ficam salvos só neste navegador.</span>
+      <button class="btn btn-primary" id="cloudBannerBtn" type="button">Entrar / Criar conta</button>
+    </div>
     <div id="viewNovo">
       <h1 class="page-title">Novo mapa</h1>
       <p class="page-sub">Cadastre os dados de nascimento para gerar o mapa natal e o mapa cosmobiológico (dial de 90°).</p>
@@ -945,6 +952,8 @@ async function doAuth(){
 async function updateAcctBox(){
   const box = document.getElementById('acctBox'); if(!box) return;
   const user = await currentUser();
+  const banner = document.getElementById('cloudBanner');
+  if(banner) banner.style.display = user ? 'none' : 'flex';
   if(user){
     box.innerHTML = `<span class="who" title="${user.email}">✦ ${user.email}</span><button class="btn-mini" id="btnLogout">Sair</button>`;
     document.getElementById('btnLogout').onclick = async ()=>{ await sb.auth.signOut(); };
@@ -973,6 +982,7 @@ async function maybeMigrateLocal(){
   const ov = document.getElementById('authOverlay'); if(!ov) return;
   document.getElementById('authSubmit').onclick = doAuth;
   document.getElementById('authCancel').onclick = closeAuth;
+  const cbb = document.getElementById('cloudBannerBtn'); if(cbb) cbb.onclick = ()=>openAuth('signup');
   document.getElementById('authEmail').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); document.getElementById('authPass').focus(); }});
   document.getElementById('authPass').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); doAuth(); }});
   ov.addEventListener('click', e=>{ if(e.target===ov) closeAuth(); });
