@@ -691,9 +691,41 @@ const HOUSE_THEMES = {
   11:'amizades, grupos e projetos coletivos',
   12:'inconsciente, espiritualidade e processos internos'
 };
+const NODE_HOUSE = {
+  1:{n:'Na Casa 1, o Nodo Norte pede desenvolver identidade própria, autoconfiança e coragem de seguir o próprio caminho, afirmando-se como indivíduo.',
+     s:'Com o Nodo Sul na Casa 7, o aprendizado é soltar a dependência excessiva de relacionamentos e da aprovação do outro para existir.'},
+  2:{n:'Na Casa 2, o Nodo Norte pede construir recursos, valores e autoestima próprios, encontrando segurança e estabilidade a partir de si mesma.',
+     s:'Com o Nodo Sul na Casa 8, o aprendizado é reduzir o apego a crises, intensidades e à dependência dos recursos e do poder do outro.'},
+  3:{n:'Na Casa 3, o Nodo Norte pede desenvolver a comunicação prática, a curiosidade, a escuta e o aprendizado do dia a dia.',
+     s:'Com o Nodo Sul na Casa 9, o aprendizado é abrir mão do excesso de certezas, dogmas e da sensação de já saber tudo.'},
+  4:{n:'Na Casa 4, o Nodo Norte pede cultivar raízes, vida emocional, família e uma base interna sólida.',
+     s:'Com o Nodo Sul na Casa 10, o aprendizado é aliviar a supervalorização de carreira, status e imagem pública como única fonte de valor.'},
+  5:{n:'Na Casa 5, o Nodo Norte pede expressar criatividade, brilho pessoal, prazer e o coração de forma autêntica.',
+     s:'Com o Nodo Sul na Casa 11, o aprendizado é sair da diluição em grupos, ideais e expectativas coletivas.'},
+  6:{n:'Na Casa 6, o Nodo Norte pede criar rotina, ordem, serviço concreto e cuidado com o corpo e a saúde.',
+     s:'Com o Nodo Sul na Casa 12, o aprendizado é aterrar a tendência à fuga, ao escapismo e à dispersão.'},
+  7:{n:'Na Casa 7, o Nodo Norte pede aprender parceria, cooperação, escuta e a considerar genuinamente o outro.',
+     s:'Com o Nodo Sul na Casa 1, o aprendizado é equilibrar o excesso de individualismo e a autossuficiência que isola.'},
+  8:{n:'Na Casa 8, o Nodo Norte pede mergulhar na intimidade profunda, na transformação e no compartilhar recursos e vulnerabilidade.',
+     s:'Com o Nodo Sul na Casa 2, o aprendizado é soltar o apego ao conforto material e à segurança fixa.'},
+  9:{n:'Na Casa 9, o Nodo Norte pede buscar sentido amplo, visão, fé, estudos superiores e experiências que expandam horizontes.',
+     s:'Com o Nodo Sul na Casa 3, o aprendizado é elevar-se acima da dispersão mental e do acúmulo de informações soltas.'},
+  10:{n:'Na Casa 10, o Nodo Norte pede assumir vocação, responsabilidade pública e um lugar de contribuição no mundo.',
+      s:'Com o Nodo Sul na Casa 4, o aprendizado é sair da zona de conforto familiar e da retração emocional.'},
+  11:{n:'Na Casa 11, o Nodo Norte pede voltar-se para o coletivo, amizades, causas e projetos de futuro.',
+      s:'Com o Nodo Sul na Casa 5, o aprendizado é equilibrar a necessidade de reconhecimento pessoal e de ser o centro das atenções.'},
+  12:{n:'Na Casa 12, o Nodo Norte pede desenvolver entrega, espiritualidade, silêncio interior e conexão com algo maior.',
+      s:'Com o Nodo Sul na Casa 6, o aprendizado é aliviar o excesso de controle, crítica e apego à rotina e à perfeição.'}
+};
 function interpretPlacement(name, lon, house){
   const s = signOf(lon);
   const signTrait = SIGN_TRAITS[s.name];
+  if((name==='Nodo Norte' || name==='Nodo Sul') && house && house!=='—'){
+    const nnHouse = name==='Nodo Norte' ? house : ((house+5)%12)+1;
+    const info = NODE_HOUSE[nnHouse];
+    const part = info ? (name==='Nodo Norte' ? info.n : info.s) : '';
+    return `${PLANET_MEANINGS[name]} Em ${s.name}, tende a se expressar através de ${signTrait}. ${part}`;
+  }
   let text = `${PLANET_MEANINGS[name]} Em ${s.name}, essa energia tende a se expressar através de ${signTrait}.`;
   if(house && house!=='—'){
     text += ` Na Casa ${house} (${HOUSE_TITLES[house]}), atua principalmente na área de ${HOUSE_THEMES[house]}.`;
