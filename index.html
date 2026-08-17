@@ -455,6 +455,66 @@ function ascMC(jd,T,lonEast,latDeg){
   return {asc,mc,ramc};
 }
 
+/* Nodo Lunar Norte (médio) — longitude do nó ascendente da órbita da Lua (Meeus) */
+function lunarNodeLon(T){
+  return norm360(125.04452 - 1934.136261*T + 0.0020708*T*T + (T*T*T)/450000);
+}
+
+/* Eclipses pré-natais: último eclipse solar (lua nova junto ao nodo) e lunar
+   (lua cheia junto ao nodo) antes do momento de referência. Aproximado. */
+function eclNodeDistance(jd){
+  const T=centuriesT(jd); const sun=sunLongitude(T); const node=lunarNodeLon(T);
+  return Math.min(Math.abs(normPM180(sun-node)), Math.abs(normPM180(sun-(node+180))));
+}
+function refineSyzygy(lo, hi, full){
+  const f = jd => { const T=centuriesT(jd); return normPM180(moonLongitude(T)-sunLongitude(T) - (full?180:0)); };
+  let flo=f(lo);
+  for(let i=0;i<44;i++){ const mid=(lo+hi)/2; const fm=f(mid); if(Math.sign(fm)!==Math.sign(flo)) hi=mid; else { lo=mid; flo=fm; } }
+  return (lo+hi)/2;
+}
+function findPrenatalEclipses(jdRef){
+  let solar=null, lunar=null, pf=null, pg=null;
+  const step=0.5;
+  for(let jd=jdRef; jd>jdRef-420; jd-=step){
+    const T=centuriesT(jd);
+    const f=normPM180(moonLongitude(T)-sunLongitude(T));       // 0 = lua nova
+    const g=normPM180(moonLongitude(T)-sunLongitude(T)-180);   // 0 = lua cheia
+    if(pf!==null){
+      if(!solar && Math.sign(f)!==Math.sign(pf) && Math.abs(f)<90 && Math.abs(pf)<90){
+        const jx=refineSyzygy(jd, jd+step, false);
+        if(eclNodeDistance(jx) < 17){ solar={jd:jx, lon:sunLongitude(centuriesT(jx))}; }
+      }
+      if(!lunar && Math.sign(g)!==Math.sign(pg) && Math.abs(g)<90 && Math.abs(pg)<90){
+        const jx=refineSyzygy(jd, jd+step, true);
+        if(eclNodeDistance(jx) < 12){ lunar={jd:jx, lon:moonLongitude(centuriesT(jx))}; }
+      }
+    }
+    pf=f; pg=g;
+    if(solar && lunar) break;
+  }
+  return {solar, lunar};
+}
+function eclipsesHTML(jd){
+  const e = findPrenatalEclipses(jd);
+  const fmt = ecl => {
+    if(!ecl) return '<span style="color:var(--text-dim);">não localizado no período</span>';
+    const c=jdToCalendar(ecl.jd), s=signOf(ecl.lon), p=n=>String(n).padStart(2,'0');
+    return `${p(c.day)}/${p(c.month)}/${c.year} · <strong>${s.glyph} ${fmtDeg(ecl.lon)} ${s.name}</strong>`;
+  };
+  return `
+    <div class="card" style="margin-top:18px;">
+      <h3 style="margin-top:0;">Eclipses pré-natais <span style="font-weight:400; font-size:12px; color:var(--text-dim);">(pontos sensíveis)</span></h3>
+      <table>
+        <thead><tr><th>Eclipse</th><th>Data</th><th>Grau</th></tr></thead>
+        <tbody>
+          <tr><td class="planet-name">☉ Solar (Lua Nova)</td><td colspan="2">${fmt(e.solar)}</td></tr>
+          <tr><td class="planet-name">☾ Lunar (Lua Cheia)</td><td colspan="2">${fmt(e.lunar)}</td></tr>
+        </tbody>
+      </table>
+      <div class="note">O grau do eclipse anterior ao nascimento é considerado um ponto sensível do mapa. Cálculo aproximado — confirme datas com efemérides profissionais.</div>
+    </div>`;
+}
+
 function jdToCalendar(jd){
   const jd2 = jd + 0.5;
   const Z = Math.floor(jd2);
@@ -522,6 +582,9 @@ function computeChartFromJD(jd, lat, lon){
   const angles = ascMC(jd,T,lon,lat);
   bodies['Ascendente'] = {lon: angles.asc};
   bodies['Meio do Céu'] = {lon: angles.mc};
+  const nnode = lunarNodeLon(T);
+  bodies['Nodo Norte'] = {lon: nnode};
+  bodies['Nodo Sul'] = {lon: norm360(nnode+180)};
   return {jd,T,bodies,asc:angles.asc,mc:angles.mc};
 }
 function computeChart(y,m,d,hh,mm,tzOffset,lat,lon){
@@ -579,7 +642,8 @@ function fmtDeg(lon){
   const min = Math.floor((d-deg)*60);
   return `${deg}°${String(min).padStart(2,'0')}'`;
 }
-const PLANET_GLYPH = {'Sol':'☉','Lua':'☾','Mercúrio':'☿','Vênus':'♀','Marte':'♂','Júpiter':'♃','Saturno':'♄','Urano':'♅','Netuno':'♆','Plutão':'♇','Ascendente':'ASC','Meio do Céu':'MC'};
+const PLANET_GLYPH = {'Sol':'☉','Lua':'☾','Mercúrio':'☿','Vênus':'♀','Marte':'♂','Júpiter':'♃','Saturno':'♄','Urano':'♅','Netuno':'♆','Plutão':'♇','Ascendente':'ASC','Meio do Céu':'MC','Nodo Norte':'☊','Nodo Sul':'☋'};
+const NODE_NAMES = ['Nodo Norte','Nodo Sul'];
 
 /* ---------- Interpretation content ---------- */
 const PLANET_MEANINGS = {
@@ -594,7 +658,9 @@ const PLANET_MEANINGS = {
   'Netuno': 'Netuno representa sonho, espiritualidade e dissolução de fronteiras — sensibilidade, imaginação, idealização e também confusão.',
   'Plutão': 'Plutão representa transformação profunda e poder — processos de morte e renascimento simbólico, intensidade e regeneração.',
   'Ascendente': 'O Ascendente representa a máscara social, a primeira impressão e a forma como a pessoa se apresenta e reage ao mundo.',
-  'Meio do Céu': 'O Meio do Céu representa a vocação, a carreira e a reputação pública — o papel que a pessoa busca exercer socialmente.'
+  'Meio do Céu': 'O Meio do Céu representa a vocação, a carreira e a reputação pública — o papel que a pessoa busca exercer socialmente.',
+  'Nodo Norte': 'O Nodo Norte (Cabeça do Dragão) aponta a direção de crescimento e evolução desta vida — as qualidades a desenvolver e o caminho que traz sentido e amadurecimento.',
+  'Nodo Sul': 'O Nodo Sul (Cauda do Dragão) representa a bagagem herdada, os talentos já conquistados e os padrões do passado — a zona de conforto que se tende a repetir e que se pede transcender.'
 };
 const SIGN_TRAITS = {
   'Áries': 'iniciativa direta, impulso e coragem para agir',
@@ -649,6 +715,7 @@ function computeAspects(bodies, orb){
   for(let i=0;i<names.length;i++){
     for(let j=i+1;j<names.length;j++){
       const a=names[i], b=names[j];
+      if(NODE_NAMES.includes(a) && NODE_NAMES.includes(b)) continue; // Nodo N/S são sempre opostos
       let diff = Math.abs(normPM180(bodies[a].lon - bodies[b].lon));
       for(const asp of ASPECTS){
         const delta = Math.abs(diff-asp.angle);
@@ -673,7 +740,7 @@ function dist90(a,b){
   return d;
 }
 function computeCosmoPictures(bodies, orb){
-  const names = Object.keys(bodies);
+  const names = Object.keys(bodies).filter(n=>!NODE_NAMES.includes(n));
   const pics = [];
   for(let i=0;i<names.length;i++){
     for(let j=i+1;j<names.length;j++){
@@ -808,7 +875,7 @@ function renderDial(bodies, orbCosmo, size){
     }
   }
   Object.keys(bodies).forEach(name=>{
-    if(name==='Meio do Céu') return;
+    if(name==='Meio do Céu' || NODE_NAMES.includes(name)) return;
     const lon = bodies[name].lon;
     const [x,y] = pt(r*0.72, lon);
     const isAngle = name==='Ascendente';
@@ -1148,7 +1215,7 @@ document.querySelectorAll('.nav-btn').forEach(b=>{
 });
 
 function renderGlossario(){
-  const planetOrder = ['Sol','Lua','Mercúrio','Vênus','Marte','Júpiter','Saturno','Urano','Netuno','Plutão','Ascendente','Meio do Céu'];
+  const planetOrder = ['Sol','Lua','Mercúrio','Vênus','Marte','Júpiter','Saturno','Urano','Netuno','Plutão','Ascendente','Meio do Céu','Nodo Norte','Nodo Sul'];
   document.getElementById('glossPlanets').innerHTML = planetOrder.map(name=>`
     <div class="pic" style="align-items:flex-start; flex-direction:column; gap:4px;">
       <span style="color:var(--gold-bright); font-family:'Inter',sans-serif; font-weight:600;">${PLANET_GLYPH[name]} ${name}</span>
@@ -1256,6 +1323,8 @@ function renderResult(chart, cusps, meta){
 
         <h3 style="margin-top:26px;">Leitura auxiliar por posição</h3>
         <div class="pic-list">${interpretationListHTML(chart, cusps)}</div>
+
+        ${eclipsesHTML(chart.jd)}
       </div>
 
       <div id="tabCosmo" style="display:none;">
@@ -1411,7 +1480,7 @@ function housesTableHTML(cusps){
   return rows;
 }
 function interpretationListHTML(chart, cusps){
-  const order = ['Sol','Lua','Mercúrio','Vênus','Marte','Júpiter','Saturno','Urano','Netuno','Plutão','Ascendente','Meio do Céu'];
+  const order = ['Sol','Lua','Mercúrio','Vênus','Marte','Júpiter','Saturno','Urano','Netuno','Plutão','Ascendente','Meio do Céu','Nodo Norte','Nodo Sul'];
   return order.map(name=>{
     const b = chart.bodies[name];
     const house = (name==='Ascendente'||name==='Meio do Céu') ? null : houseOfPoint(b.lon, cusps);
@@ -1452,6 +1521,7 @@ function renderSolarReturn(srChart, srCusps, jdReturn, tz, place, year){
         </table>
       </div>
     </div>
+    ${eclipsesHTML(jdReturn)}
     <div class="note">O retorno solar é recalculado a cada consulta — mude o ano ou o local (se a pessoa estiver viajando no aniversário) e clique em calcular novamente.</div>
   `;
 }
@@ -1466,7 +1536,7 @@ function quickTriadHTML(chart){
 }
 
 function planetTableHTML(chart, cusps){
-  const order = ['Sol','Lua','Mercúrio','Vênus','Marte','Júpiter','Saturno','Urano','Netuno','Plutão','Ascendente','Meio do Céu'];
+  const order = ['Sol','Lua','Mercúrio','Vênus','Marte','Júpiter','Saturno','Urano','Netuno','Plutão','Ascendente','Meio do Céu','Nodo Norte','Nodo Sul'];
   return order.map(name=>{
     const b = chart.bodies[name];
     const s = signOf(b.lon);
