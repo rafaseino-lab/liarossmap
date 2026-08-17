@@ -799,7 +799,7 @@ function computeCosmoPictures(bodies, orb){
 function renderWheel(chart, cusps, size){
   const cx=size/2, cy=size/2;
   const rOuter=size*0.47, rZodiac=size*0.395, rHouseNum=size*0.35, rPlanet=size*0.30, rInner=size*0.15;
-  const angleFor = lon => deg2rad(180 - (lon - chart.asc)); // Asc on the left (9 o'clock), counterclockwise increase
+  const angleFor = lon => deg2rad(180 + (lon - chart.asc)); // Asc à esquerda (9h), MC no topo, casas no sentido anti-horário (padrão astrológico)
   const pt = (r,lon) => { const a=angleFor(lon); return [cx + r*Math.cos(a), cy - r*Math.sin(a)]; };
   const F = n => (Math.round(n*100)/100);
   function sector(r1,r2,l0,l1,steps){
